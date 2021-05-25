@@ -126,11 +126,16 @@ class EditableLiteralField extends EditableFormField
                 'HideFromReports',
                 _t(__CLASS__.'.HIDEFROMREPORT', 'Hide from reports?')
             ),
+        ]);
+
+        // MWP-466 Show 'Hide Title' after 'Title'
+        $fields->insertAfter(
+            'Title',
             CheckboxField::create(
                 'HideLabel',
-                _t(__CLASS__.'.HIDELABEL', "Hide 'Title' label on frontend?")
+                _t(__CLASS__ . '.HIDELABEL', "Hide 'Title' label on frontend?")
             )
-        ]);
+        );
 
         return $fields;
     }
@@ -139,7 +144,8 @@ class EditableLiteralField extends EditableFormField
     {
         $content = LiteralField::create(
             "LiteralFieldContent-{$this->ID}]",
-            $this->dbObject('Content')->forTemplate()
+            // MWP-542 Show Html block richlinks
+            $this->dbObject('Content')->RichLinks()
         );
 
         $field = CompositeField::create($content)
