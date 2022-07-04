@@ -129,11 +129,16 @@ class EditableLiteralField extends EditableFormField
                     'HideFromReports',
                     _t(__CLASS__.'.HIDEFROMREPORT', 'Hide from reports?')
                 ),
+            ]);
+
+            // MWP-466 Show 'Hide Title' after 'Title'
+            $fields->insertAfter(
+                'Title',
                 CheckboxField::create(
                     'HideLabel',
                     _t(__CLASS__.'.HIDELABEL', "Hide 'Title' label on frontend?")
                 )
-            ]);
+            );
         });
 
         return parent::getCMSFields();
