@@ -261,6 +261,8 @@ jQuery(document).ready(($) => {
     this.$buttons.each((i, stepButton) => {
       $(stepButton).on('click', (e) => {
         e.preventDefault();
+        if ($(e.target).attr('aria-disabled') == "true") return;
+
         const stepNumber = parseInt($(e.target).data('step'), 10);
         self.$el.trigger('userform.progress.changestep', stepNumber);
       });
@@ -352,12 +354,15 @@ jQuery(document).ready(($) => {
 
       if (parseInt($element.data('step'), 10) === stepNumber && $element.is(':visible')) {
         $item.addClass('current viewed');
-        $element.removeAttr('disabled');
+
+        $element.attr('aria-disabled', 'false');
+        $element.attr('aria-current', 'true');
 
         return;
       }
 
       $item.removeClass('current');
+      $element.attr('aria-current', 'false');
     });
 
     // Update the progress bar's title with the new step's title.
