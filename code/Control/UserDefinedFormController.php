@@ -38,7 +38,7 @@ use Swift_RfcComplianceException;
 /**
  * Controller for the {@link UserDefinedForm} page type.
  *
- * @package userforms
+ * @extends PageController<UserDefinedForm>
  */
 class UserDefinedFormController extends PageController
 {
@@ -55,6 +55,16 @@ class UserDefinedFormController extends PageController
     private static $form_submissions_folder = 'Form-submissions';
 
     private static string $file_upload_stage = Versioned::DRAFT;
+
+    /**
+     * Size that an uploaded file must not excede for it to be attached to an email
+     * Follows PHP "shorthand bytes" definition rules.
+     * @see self::parseByteSizeString()
+     *
+     * @var int
+     * @config
+     */
+    private static $maximum_email_attachment_size = '1M';
 
     protected function init()
     {
@@ -168,7 +178,6 @@ class UserDefinedFormController extends PageController
     public function Form()
     {
         $form = UserForm::create($this, 'Form_' . $this->ID);
-        /** @skipUpgrade */
         $form->setFormAction(Controller::join_links($this->Link(), 'Form'));
         $this->generateConditionalJavascript();
         return $form;
@@ -191,7 +200,6 @@ class UserDefinedFormController extends PageController
         $watch = [];
 
         if ($formFields) {
-            /** @var EditableFormField $field */
             foreach ($formFields as $field) {
                 if ($result = $field->formatDisplayRules()) {
                     $watch[] = $result;
@@ -213,6 +221,42 @@ class UserDefinedFormController extends PageController
 JS
                 , 'UserFormsConditional-' . $form->ID);
         }
+    }
+
+    /**
+     * Returns the maximum size uploaded files can be before they're excluded from CMS configured recipient emails
+     *
+     * @return int size in megabytes
+     */
+    public function getMaximumAllowedEmailAttachmentSize()
+    {
+        return $this->parseByteSizeString($this->config()->get('maximum_email_attachment_size'));
+    }
+
+    /**
+     * Convert file sizes with a single character for unit size to true byte count.
+     * Just as with php.ini and e.g. 128M -> 1024 * 1024 * 128 bytes.
+     * @see https://www.php.net/manual/en/faq.using.php#faq.using.shorthandbytes
+     *
+     * @param string $byteSize
+     * @return int bytes
+     */
+    protected function parseByteSizeString($byteSize)
+    {
+        // kilo, mega, giga
+        $validUnits = 'kmg';
+        $valid = preg_match("/^(?<number>\d+)((?<unit>[$validUnits])b?)?$/i", $byteSize, $matches);
+        if (!$valid) {
+            throw new \InvalidArgumentException(
+                "Expected a positive integer followed optionally by K, M, or G. Found '$byteSize' instead"
+            );
+        }
+        $power = 0;
+        // prepend b for bytes to $validUnits to give correct mapping of ordinal position to exponent
+        if (isset($matches['unit'])) {
+            $power = stripos("b$validUnits", $matches['unit']);
+        }
+        return intval($matches['number']) * pow(1024, $power);
     }
 
     /**
@@ -268,7 +312,7 @@ JS
                         if (!$field->getFolderExists()) {
                             $field->createProtectedFolder();
                         }
-                        
+
                         $file = Versioned::withVersionedMode(function () use ($field, $form) {
                             $stage = Injector::inst()->get(self::class)->config()->get('file_upload_stage');
                             Versioned::set_stage($stage);
@@ -308,9 +352,10 @@ JS
                         // write file to form field
                         $submittedField->UploadedFileID = $file->ID;
 
-                        // attach a file only if lower than 1MB
-                        if ($file->getAbsoluteSize() < 1024 * 1024 * 1) {
-                            $attachments[] = $file;
+                        // attach a file to recipient email only if lower than configured size
+                        if ($file->getAbsoluteSize() <= $this->getMaximumAllowedEmailAttachmentSize()) {
+                            // using the field name as array index is fine as file upload field only allows one file
+                            $attachments[$field->Name] = $file;
                         }
                     }
                 }
@@ -348,17 +393,22 @@ JS
                 $mergeFields = $this->getMergeFieldsMap($emailData['Fields']);
 
                 if ($attachments && (bool) $recipient->HideFormData === false) {
-                    foreach ($attachments as $file) {
+                    foreach ($attachments as $uploadFieldName => $file) {
                         /** @var File $file */
                         if ((int) $file->ID === 0) {
                             continue;
                         }
 
-                        $email->addAttachmentFromData(
-                            $file->getString(),
-                            $file->getFilename(),
-                            $file->getMimeType()
-                        );
+                        $canAttachFileForRecipient = true;
+                        $this->extend('updateCanAttachFileForRecipient', $canAttachFileForRecipient, $recipient, $uploadFieldName, $file);
+
+                        if ($canAttachFileForRecipient) {
+                            $email->addAttachmentFromData(
+                                $file->getString(),
+                                $file->getFilename(),
+                                $file->getMimeType()
+                            );
+                        }
                     }
                 }
 
@@ -388,15 +438,17 @@ JS
                     $submittedFormField = $submittedFields->find('Name', $recipient->SendEmailFromField()->Name);
 
                     if ($submittedFormField && $submittedFormField->Value && is_string($submittedFormField->Value)) {
-                        $email->setReplyTo(explode(',', $submittedFormField->Value ?? ''));
+                        $emailSendTo = $this->validEmailsToArray($submittedFormField->Value);
+                        $email->addReplyTo(...$emailSendTo);
                     }
                 } elseif ($recipient->EmailReplyTo) {
-                    $email->setReplyTo(explode(',', $recipient->EmailReplyTo ?? ''));
+                    $emailReplyTo = $this->validEmailsToArray($recipient->EmailReplyTo);
+                    $email->addReplyTo(...$emailReplyTo);
                 }
 
                 // check for a specified from; otherwise fall back to server defaults
                 if ($recipient->EmailFrom) {
-                    $email->setFrom(explode(',', $recipient->EmailFrom ?? ''));
+                    $email->setFrom($this->validEmailsToArray($recipient->EmailFrom));
                 }
 
                 // check to see if they are a dynamic reciever eg based on a dropdown field a user selected
@@ -407,12 +459,12 @@ JS
                         $submittedFormField = $submittedFields->find('Name', $recipient->SendEmailToField()->Name);
 
                         if ($submittedFormField && is_string($submittedFormField->Value)) {
-                            $email->setTo(explode(',', $submittedFormField->Value ?? ''));
+                            $email->setTo($this->validEmailsToArray($submittedFormField->Value));
                         } else {
-                            $email->setTo(explode(',', $recipient->EmailAddress ?? ''));
+                            $email->setTo($this->validEmailsToArray($recipient->EmailAddress));
                         }
                     } else {
-                        $email->setTo(explode(',', $recipient->EmailAddress ?? ''));
+                        $email->setTo($this->validEmailsToArray($recipient->EmailAddress));
                     }
                 } catch (Swift_RfcComplianceException $e) {
                     // The sending address is empty and/or invalid. Log and skip sending.
@@ -626,5 +678,22 @@ EOS;
         }
 
         return $result;
+    }
+
+    /**
+     * Check validity of email and return array of valid emails
+     */
+    private function validEmailsToArray(?string $emails): array
+    {
+        $emailsArray = [];
+        $emails = explode(',', $emails ?? '');
+        foreach ($emails as $email) {
+            $email = trim($email);
+            if (Email::is_valid_address($email)) {
+                $emailsArray[] = $email;
+            }
+        }
+
+        return $emailsArray;
     }
 }

@@ -15,6 +15,8 @@ use SilverStripe\Forms\GridField\GridFieldDetailForm;
 use SilverStripe\Forms\GridField\GridFieldToolbarHeader;
 use SilverStripe\ORM\DataExtension;
 use SilverStripe\ORM\DataList;
+use SilverStripe\ORM\DataObject;
+use SilverStripe\ORM\HasManyList;
 use SilverStripe\UserForms\Form\GridFieldAddClassesButton;
 use SilverStripe\UserForms\Model\EditableFormField;
 use SilverStripe\UserForms\Model\EditableFormField\EditableFieldGroup;
@@ -28,7 +30,7 @@ use Symbiote\GridFieldExtensions\GridFieldEditableColumns;
 use Symbiote\GridFieldExtensions\GridFieldOrderableRows;
 
 /**
- * @method DataList|EditableFormField[] Fields()
+ * @method HasManyList<EditableFormField> Fields()
  */
 class UserFormFieldEditorExtension extends DataExtension
 {
@@ -56,7 +58,7 @@ class UserFormFieldEditorExtension extends DataExtension
     {
         $fieldEditor = $this->getFieldEditorGrid();
 
-        $fields->insertAfter(new Tab('FormFields', _t(__CLASS__.'.FORMFIELDS', 'Form Fields')), 'Main');
+        $fields->insertAfter('Main', new Tab('FormFields', _t(__CLASS__.'.FORMFIELDS', 'Form Fields')));
         $fields->addFieldToTab('Root.FormFields', $fieldEditor);
 
         return $fields;
@@ -126,8 +128,7 @@ class UserFormFieldEditorExtension extends DataExtension
             $fields,
             $config
         )
-            ->addExtraClass('uf-field-editor')
-            ->setAttribute('data-admin-url', AdminRootController::admin_url());
+            ->addExtraClass('uf-field-editor');
 
         return $fieldEditor;
     }
@@ -192,7 +193,7 @@ class UserFormFieldEditorExtension extends DataExtension
         foreach ($this->owner->Fields() as $field) {
             // store any IDs of fields we publish so we don't unpublish them
             $seenIDs[] = $field->ID;
-            $field->doPublish(Versioned::DRAFT, Versioned::LIVE);
+            $field->publishRecursive();
             $field->destroy();
         }
 
@@ -229,11 +230,11 @@ class UserFormFieldEditorExtension extends DataExtension
     /**
      * When duplicating a UserDefinedForm, duplicate all of its fields and display rules
      *
-     * @see \SilverStripe\ORM\DataObject::duplicate
-     * @param \SilverStripe\ORM\DataObject $oldPage
+     * @see DataObject::duplicate
+     * @param DataObject $oldPage
      * @param bool $doWrite
      * @param string $manyMany
-     * @return \SilverStripe\ORM\DataObject
+     * @return DataObject
      */
     public function onAfterDuplicate($oldPage, $doWrite, $manyMany)
     {
@@ -291,7 +292,7 @@ class UserFormFieldEditorExtension extends DataExtension
     public function onAfterRevertToLive()
     {
         foreach ($this->owner->Fields() as $field) {
-            $field->copyVersionToStage(Versioned::LIVE, Versioned::DRAFT, false);
+            $field->copyVersionToStage(Versioned::LIVE, Versioned::DRAFT);
             $field->writeWithoutVersion();
         }
     }

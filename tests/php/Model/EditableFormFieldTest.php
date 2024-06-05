@@ -14,7 +14,7 @@ use SilverStripe\UserForms\Model\EditableFormField\EditableLiteralField;
 use SilverStripe\UserForms\Model\EditableFormField\EditableOption;
 use SilverStripe\UserForms\Model\EditableFormField\EditableRadioField;
 use SilverStripe\UserForms\Model\EditableFormField\EditableTextField;
-use SilverStripe\UserForms\Model\UserDefinedForm;
+use SilverStripe\UserForms\Model\EditableCustomRule;
 
 /**
  * @package userforms
@@ -58,35 +58,6 @@ class EditableFormFieldTest extends FunctionalTest
         $this->assertTrue($text->canView());
         $this->assertFalse($text->canEdit());
         $this->assertFalse($text->canDelete());
-    }
-
-    public function testCustomRules()
-    {
-        $this->logInWithPermission('ADMIN');
-        $form = $this->objFromFixture(UserDefinedForm::class, 'custom-rules-form');
-
-        $checkbox = $form->Fields()->find('ClassName', EditableCheckbox::class);
-        $field = $form->Fields()->find('ClassName', EditableTextField::class);
-
-        $rules = $checkbox->DisplayRules();
-
-        // form has 2 fields - a checkbox and a text field
-        // it has 1 rule - when ticked the checkbox hides the text field
-        $this->assertEquals(1, $rules->Count());
-
-        // EffectiveDisplayRules rule has been deprecated
-        $this->assertEquals($rules, $checkbox->EffectiveDisplayRules());
-
-        $checkboxRule = $rules->First();
-        $checkboxRule->ConditionFieldID = $field->ID;
-
-        $this->assertEquals($checkboxRule->Display, 'Hide');
-        $this->assertEquals($checkboxRule->ConditionOption, 'HasValue');
-        $this->assertEquals($checkboxRule->FieldValue, '6');
-
-        // If field is required then all custom rules are disabled
-        $checkbox->Required = true;
-        $this->assertEquals(0, $checkbox->EffectiveDisplayRules()->count());
     }
 
     public function testEditableOptionEmptyValue()
@@ -353,5 +324,55 @@ class EditableFormFieldTest extends FunctionalTest
 
         $updatedField = EditableFormField::get()->byId($fieldId);
         $this->assertFalse((bool)$updatedField->Required);
+    }
+
+    public function testRecursionProtection()
+    {
+        $radioOne = EditableRadioField::create();
+        $radioOneID = $radioOne->write();
+        $optionOneOne = EditableOption::create();
+        $optionOneOne->Value = 'yes';
+        $optionOneOne->ParentID = $radioOneID;
+        $optionOneTwo = EditableOption::create();
+        $optionOneTwo->Value = 'no';
+        $optionOneTwo->ParentID = $radioOneID;
+
+        $radioTwo = EditableRadioField::create();
+        $radioTwoID = $radioTwo->write();
+        $optionTwoOne = EditableOption::create();
+        $optionTwoOne->Value = 'yes';
+        $optionTwoOne->ParentID = $radioOneID;
+        $optionTwoTwo = EditableOption::create();
+        $optionTwoTwo->Value = 'no';
+        $optionTwoTwo->ParentID = $radioTwoID;
+
+        $conditionOne = EditableCustomRule::create();
+        $conditionOne->ParentID = $radioOneID;
+        $conditionOne->ConditionFieldID = $radioTwoID;
+        $conditionOne->ConditionOption = 'HasValue';
+        $conditionOne->FieldValue = 'yes';
+        $conditionOne->write();
+        $radioOne->DisplayRules()->add($conditionOne);
+
+        $conditionTwo = EditableCustomRule::create();
+        $conditionTwo->ParentID = $radioTwoID;
+        $conditionTwo->ConditionFieldID = $radioOneID;
+        $conditionTwo->ConditionOption = 'IsNotBlank';
+        $conditionTwo->write();
+        $radioTwo->DisplayRules()->add($conditionTwo);
+
+        $testField = new class extends EditableFormField
+        {
+            public function countIsDisplayedRecursionProtection(int $fieldID)
+            {
+                return count(array_filter(static::$isDisplayedRecursionProtection, function ($id) use ($fieldID) {
+                    return $id === $fieldID;
+                }));
+            }
+        };
+
+        $this->assertSame(0, $testField->countIsDisplayedRecursionProtection($radioOneID));
+        $radioOne->isDisplayed([]);
+        $this->assertSame(100, $testField->countIsDisplayedRecursionProtection($radioOneID));
     }
 }

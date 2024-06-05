@@ -447,8 +447,6 @@ class RecoverUploadLocationsHelper
                     '"SubmittedFileFieldTable"."UploadedFileID" > ?' => $greaterThanID
                 ])->execute();
 
-            // TODO: Versioned::prepopulate_versionnumber_cache
-
             foreach ($chunk as $item) {
                 yield $item;
                 $greaterThanID = $item['UploadedFileID'];
@@ -562,7 +560,7 @@ limit 100
      * Returns DataList object containing every
      * uploaded file record
      *
-     * @return DataList
+     * @return DataList<SubmittedFileField>
      */
     private function getCountQuery()
     {

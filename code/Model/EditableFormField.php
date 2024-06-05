@@ -7,7 +7,6 @@ use SilverStripe\CMS\Controllers\CMSPageEditController;
 use SilverStripe\Control\Controller;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Config;
-use SilverStripe\Core\Convert;
 use SilverStripe\Core\Manifest\ModuleLoader;
 use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\DropdownField;
@@ -23,13 +22,11 @@ use SilverStripe\Forms\ReadonlyField;
 use SilverStripe\Forms\SegmentField;
 use SilverStripe\Forms\TabSet;
 use SilverStripe\Forms\TextField;
-use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\ORM\FieldType\DBVarchar;
 use SilverStripe\ORM\HasManyList;
-use SilverStripe\ORM\SS_List;
 use SilverStripe\ORM\ValidationException;
 use SilverStripe\UserForms\Extension\UserFormFieldEditorExtension;
 use SilverStripe\UserForms\Model\EditableFormField\EditableFieldGroup;
@@ -60,9 +57,9 @@ use Symbiote\GridFieldExtensions\GridFieldEditableColumns;
  * @property int $ShowInSummary
  * @property int $ShowOnLoad
  * @property int $Sort
- * @method UserDefinedForm Parent() Parent page
- * @method HasManyList|EditableCustomRule[] DisplayRules() List of EditableCustomRule objects
  * @mixin Versioned
+ * @method HasManyList<EditableCustomRule> DisplayRules()
+ * @method DataObject Parent()
  */
 class EditableFormField extends DataObject
 {
@@ -145,6 +142,10 @@ class EditableFormField extends DataObject
         'ShowOnLoad' => true,
     ];
 
+    private static $indexes = [
+        'Name' => 'Name',
+    ];
+
 
     /**
      * @config
@@ -181,6 +182,11 @@ class EditableFormField extends DataObject
     ];
 
     private static $cascade_duplicates = false;
+
+    /**
+     * This is protected rather that private so that it's unit testable
+     */
+    protected static $isDisplayedRecursionProtection = [];
 
     /**
      * @var bool
@@ -644,18 +650,6 @@ class EditableFormField extends DataObject
     }
 
     /**
-     * Returns the Title for rendering in the front-end (with XML values escaped)
-     *
-     * @deprecated 5.0..6.0 XML is automatically escaped in templates from SS 4 onwards. Please use $Title directly.
-     *
-     * @return string
-     */
-    public function getEscapedTitle()
-    {
-        return Convert::raw2xml($this->Title);
-    }
-
-    /**
      * Find the numeric indicator (1.1.2) that represents it's nesting value
      *
      * Only useful for fields attached to a current page, and that contain other fields such as pages
@@ -938,20 +932,6 @@ class EditableFormField extends DataObject
     }
 
     /**
-     * Determine effective display rules for this field.
-     *
-     * @return SS_List
-     * @deprecated 5.6 No longer needed because of support for conditional required field.
-     */
-    public function EffectiveDisplayRules()
-    {
-        if ($this->Required) {
-            return ArrayList::create();
-        }
-        return $this->DisplayRules();
-    }
-
-    /**
      * Extracts info from DisplayRules into array so UserDefinedForm->buildWatchJS can run through it.
      * @return array|null
      */
@@ -970,10 +950,8 @@ class EditableFormField extends DataObject
         ];
 
         // Check for field dependencies / default
-        /** @var EditableCustomRule $rule */
         foreach ($this->DisplayRules() as $rule) {
             // Get the field which is effected
-            /** @var EditableFormField $formFieldWatch */
             $formFieldWatch = DataObject::get_by_id(EditableFormField::class, $rule->ConditionFieldID);
             // Skip deleted fields
             if (!$formFieldWatch) {
@@ -1003,12 +981,27 @@ class EditableFormField extends DataObject
     }
 
     /**
+     * Used to prevent infinite recursion when checking a CMS user has setup two or more fields to have
+     * their display rules dependent on one another
+     *
+     * There will be several thousand calls to isDisplayed before memory is likely to be hit, so 100
+     * calls is a reasonable limit that ensures that this doesn't prevent legit use cases from being
+     * identified as recursion
+     */
+    private function checkIsDisplayedRecursionProtection(): bool
+    {
+        $count = count(array_filter(static::$isDisplayedRecursionProtection, fn($id) => $id === $this->ID));
+        return $count < 100;
+    }
+
+    /**
      * Check if this EditableFormField is displayed based on its DisplayRules and the provided data.
      * @param array $data
      * @return bool
      */
     public function isDisplayed(array $data)
     {
+        static::$isDisplayedRecursionProtection[] = $this->ID;
         $displayRules = $this->DisplayRules();
 
         if ($displayRules->count() === 0) {
@@ -1026,7 +1019,9 @@ class EditableFormField extends DataObject
             $controllingField = $rule->ConditionField();
 
             // recursively check - if any of the dependant fields are hidden, assume the rule can not be satisfied
-            $ruleSatisfied = $controllingField->isDisplayed($data) && $rule->validateAgainstFormData($data);
+            $ruleSatisfied = $this->checkIsDisplayedRecursionProtection()
+            && $controllingField->isDisplayed($data)
+            && $rule->validateAgainstFormData($data);
 
             if ($conjunction === '||' && $ruleSatisfied) {
                 $conditionsSatisfied = true;

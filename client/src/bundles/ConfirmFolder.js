@@ -2,8 +2,9 @@
 import i18n from 'i18n';
 import jQuery from 'jquery';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import { loadComponent } from 'lib/Injector';
+import { joinUrlPaths } from 'lib/urls';
 import url from 'url';
 import qs from 'qs';
 
@@ -60,8 +61,8 @@ jQuery.entwine('ss', ($) => {
   $('#Form_ConfirmFolderForm_FolderID_Holder .treedropdownfield.is-open,#Form_ItemEditForm_FolderID .treedropdownfield.is-open').entwine({
     onunmatch() {
       // Build url
-      const adminUrl = $(this).closest('#Form_ConfirmFolderForm').data('adminUrl');
-      const parsedURL = url.parse(`${adminUrl}user-forms/getfoldergrouppermissions`);
+      const adminUrl = window.ss.config.adminUrl || '/admin/';
+      const parsedURL = url.parse(joinUrlPaths(adminUrl, 'user-forms/getfoldergrouppermissions'));
       const parsedQs = qs.parse(parsedURL.query);
       parsedQs.FolderID = $(this).find('input[name=FolderID]').val();
       const fetchURL = url.format({ ...parsedURL, search: qs.stringify(parsedQs) });
@@ -105,9 +106,7 @@ jQuery.entwine('ss', ($) => {
 
       dialog = $('<div id="confirm-folder__dialog-wrapper" />');
       const id = $(this).closest('tr').data('id');
-      const adminUrl = $(this).closest('.uf-field-editor').data('adminUrl');
       dialog.data('id', id);
-      dialog.data('adminUrl', adminUrl);
       $('body').append(dialog);
 
       dialog.open();
@@ -116,6 +115,8 @@ jQuery.entwine('ss', ($) => {
 
   /** handle modal rendering */
   $('#confirm-folder__dialog-wrapper').entwine({
+    ReactRoot: null,
+
     onunmatch() {
       // solves errors given by ReactDOM "no matched root found" error.
       this._clearModal();
@@ -143,13 +144,18 @@ jQuery.entwine('ss', ($) => {
       const editableFileFieldID = $(this).data('id');
 
       // Build schema url
-      const adminUrl = $(this).data('adminUrl');
-      const parsedURL = url.parse(`${adminUrl}user-forms/confirmfolderformschema`);
+      const adminUrl = window.ss.config.adminUrl || '/admin/';
+      const parsedURL = url.parse(joinUrlPaths(adminUrl, 'user-forms/confirmfolderformschema'));
       const parsedQs = qs.parse(parsedURL.query);
       parsedQs.ID = editableFileFieldID;
       const schemaUrl = url.format({ ...parsedURL, search: qs.stringify(parsedQs) });
 
-      ReactDOM.render(
+      let root = this.getReactRoot();
+      if (!root) {
+        root = createRoot(this[0]);
+        this.setReactRoot(root);
+      }
+      root.render(
         <FormBuilderModal
           title={title}
           isOpen={isOpen}
@@ -161,14 +167,16 @@ jQuery.entwine('ss', ($) => {
           responseClassBad="modal__response modal__response--error"
           responseClassGood="modal__response modal__response--good"
           identifier="UserForms.ConfirmFolder"
-        />,
-        this[0]
+        />
       );
     },
 
     _clearModal() {
-      ReactDOM.unmountComponentAtNode(this[0]);
-      // this.empty();
+      const root = this.getReactRoot();
+      if (root) {
+        root.unmount();
+        this.setReactRoot(null);
+      }
     },
 
     _handleHideModal() {

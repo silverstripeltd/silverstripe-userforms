@@ -2,6 +2,7 @@
 
 namespace SilverStripe\UserForms\Tests\Control;
 
+use ReflectionClass;
 use SilverStripe\Assets\Dev\TestAssetStore;
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
@@ -24,6 +25,7 @@ use SilverStripe\UserForms\Model\EditableFormField\EditableTextField;
 use SilverStripe\UserForms\Model\Recipient\EmailRecipient;
 use SilverStripe\UserForms\Model\Submission\SubmittedFormField;
 use SilverStripe\UserForms\Model\UserDefinedForm;
+use SilverStripe\UserForms\Tests\Control\fixtures\SizeStringTestableController;
 use SilverStripe\Versioned\Versioned;
 use SilverStripe\View\ArrayData;
 use SilverStripe\View\SSViewer;
@@ -36,8 +38,6 @@ class UserDefinedFormControllerTest extends FunctionalTest
 {
     protected static $fixture_file = '../UserFormsTest.yml';
 
-    protected static $use_draft_site = true;
-
     protected static $disable_themes = true;
 
     protected function setUp(): void
@@ -47,7 +47,9 @@ class UserDefinedFormControllerTest extends FunctionalTest
         // Set backend and base url
         TestAssetStore::activate('AssetStoreTest');
 
-        Config::modify()->merge(SSViewer::class, 'themes', ['simple', '$default']);
+        $config = Config::modify();
+        $config->set(UserDefinedFormController::class, 'maximum_email_attachment_size', "1M");
+        $config->merge(SSViewer::class, 'themes', ['simple', '$default']);
     }
 
     protected function tearDown(): void
@@ -106,7 +108,7 @@ class UserDefinedFormControllerTest extends FunctionalTest
         $this->assertEmailSent('nohtml@example.com', 'no-reply@example.com', 'Email Subject');
         $nohtml = $this->findEmail('nohtml@example.com', 'no-reply@example.com', 'Email Subject');
 
-        $this->assertStringContainsString('Basic Text Field: Basic Value', $nohtml['Content'], 'Email contains no html');
+        $this->assertStringContainsString('* Basic Value <b>HTML</b>', $nohtml['Content'], 'Email contains no html');
 
         // submitted html tags are not escaped because the email is being sent as text/plain
         $value = 'My body text Basic Value <b>HTML</b>';
@@ -129,8 +131,8 @@ class UserDefinedFormControllerTest extends FunctionalTest
 
         // check that multiple email addresses are supported in to and from
         $this->assertEmailSent(
-            'test1@example.com; test2@example.com',
-            'test3@example.com; test4@example.com',
+            'test1@example.com, test2@example.com',
+            'test3@example.com, test4@example.com',
             'Test Email'
         );
     }
@@ -273,7 +275,8 @@ class UserDefinedFormControllerTest extends FunctionalTest
         $actions = $controller->Form()->getFormActions();
 
         $expected = new FieldList(new FormAction('process', 'Custom Button'));
-        $expected->push(FormAction::create('clearForm', 'Clear')->setAttribute('type', 'reset'));
+        $clearAction = new FormAction('clearForm', 'Clear');
+        $expected->push($clearAction->setAttribute('type', 'reset'));
         $expected->setForm($controller->Form());
 
         $this->assertEquals($actions, $expected);
@@ -404,7 +407,7 @@ class UserDefinedFormControllerTest extends FunctionalTest
         Config::modify()->set(Upload_Validator::class, 'use_is_uploaded_file', false);
 
         $userForm = $this->setupFormFrontend('upload-form');
-        $controller = UserDefinedFormController::create($userForm);
+        $controller = new UserDefinedFormController($userForm);
         $field = $this->objFromFixture(EditableFileField::class, 'file-field-1');
 
         $path = realpath(__DIR__ . '/fixtures/testfile.jpg');
@@ -440,7 +443,7 @@ class UserDefinedFormControllerTest extends FunctionalTest
         Config::modify()->set(Upload_Validator::class, 'use_is_uploaded_file', false);
 
         $userForm = $this->setupFormFrontend('upload-form');
-        $controller = UserDefinedFormController::create($userForm);
+        $controller = new UserDefinedFormController($userForm);
         $field = $this->objFromFixture(EditableFileField::class, 'file-field-1');
 
         $path = realpath(__DIR__ . '/fixtures/testfile.jpg');
@@ -510,5 +513,104 @@ class UserDefinedFormControllerTest extends FunctionalTest
         $this->assertEquals($stageBefore, Versioned::get_stage());
         $this->assertEquals(1, $fileDraftCount);
         $this->assertEquals(0, $fileLiveCount);
+    }
+
+    public function testEmailAttachmentMaximumSizeCanBeConfigured()
+    {
+        $udfController = new UserDefinedFormController();
+        $config = Config::modify();
+        $config->set(UserDefinedFormController::class, 'maximum_email_attachment_size', '1M');
+        $this->assertSame(1 * 1024 * 1024, $udfController->getMaximumAllowedEmailAttachmentSize());
+        $config->set(UserDefinedFormController::class, 'maximum_email_attachment_size', '5M');
+        $this->assertSame(5 * 1024 * 1024, $udfController->getMaximumAllowedEmailAttachmentSize());
+    }
+
+    public function getParseByteSizeStringTestValues()
+    {
+        return [
+            ['9846', 9846],
+            ['1048576', 1048576],
+            ['1k', 1024],
+            ['1K', 1024],
+            ['4k', 4096],
+            ['4K', 4096],
+            ['1kb', 1024],
+            ['1KB', 1024],
+            ['4kB', 4096],
+            ['4Kb', 4096],
+            ['1m', 1048576],
+            ['1M', 1048576],
+            ['4mb', 4194304],
+            ['4MB', 4194304],
+            ['25mB', 26214400],
+            ['25Mb', 26214400],
+            ['1g', 1073741824],
+            ['2GB', 2147483648],
+        ];
+    }
+
+    /**
+     * @dataProvider getParseByteSizeStringTestValues
+     */
+    public function testParseByteSizeString($input, $expectedOutput)
+    {
+        $controller = new SizeStringTestableController(); // extends UserDefinedFormController
+        $this->assertSame($expectedOutput, $controller->convertSizeStringToBytes($input));
+    }
+
+    public function getParseByteSizeStringTestBadValues()
+    {
+        return [
+            ['1234b'],
+            ['9846B'],
+            ['1kilobyte'],
+            ['1 K'],
+            ['Four kilobytes'],
+            ['4Mbs'],
+            ['12Gigs'],
+        ];
+    }
+
+    /**
+     * @dataProvider getParseByteSizeStringTestBadValues
+     * @expectedException \InvalidArgumentException
+     */
+    public function testParseByteSizeStringBadValuesThrowException($input)
+    {
+        $this->expectException('\InvalidArgumentException');
+        $controller = new SizeStringTestableController(); // extends UserDefinedFormController
+        $controller->convertSizeStringToBytes($input);
+    }
+
+    public function provideValidEmailsToArray()
+    {
+        return [
+            [[], [null]],
+            [[], [' , , ']],
+            [[], ['broken.email, broken@.email, broken2.@email']],
+            [
+                ['broken@email', 'correctemail@email.com'],
+                [', broken@email, email@-email.com,correctemail@email.com,']
+            ],
+            [
+                ['correctemail1@email.com', 'correctemail2@email.com', 'correctemail3@email.com'],
+                ['correctemail1@email.com, correctemail2@email.com, correctemail3@email.com']
+            ]
+        ];
+    }
+
+    /**
+     * @dataProvider provideValidEmailsToArray
+     * Test that provided email is valid
+     */
+    public function testValidEmailsToArray(array $expectedOutput, array $input)
+    {
+        $class = new ReflectionClass(UserDefinedFormController::class);
+        $method = $class->getMethod('validEmailsToArray');
+        $method->setAccessible(true);
+
+        $controller = new UserDefinedFormController();
+
+        $this->assertEquals($expectedOutput, $method->invokeArgs($controller, $input));
     }
 }

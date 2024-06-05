@@ -60,7 +60,6 @@ class UserDefinedFormAdmin extends LeftAndMain
      */
     private static function getRestrictedAccessField(string $folder, string $title)
     {
-        /** @var TextField $textField */
         $textField = TextField::create('CreateFolder', '');
 
         /** @var Folder $formSubmissionsFolder */
@@ -80,7 +79,7 @@ class UserDefinedFormAdmin extends LeftAndMain
     }
 
 
-    public function index($request)
+    public function index(HTTPRequest $request): HTTPResponse
     {
         // Don't serve anythign under the main URL.
         return $this->httpError(404);
@@ -121,7 +120,6 @@ class UserDefinedFormAdmin extends LeftAndMain
         if ($editableFormField instanceof EditableFileField) {
             $folderId = $editableFormField->FolderID;
         }
-        /** @var Folder $folder */
         $folder = Folder::get()->byID($folderId);
         if (!$folder) {
             $folder = $this->getFormSubmissionFolder();
@@ -200,8 +198,7 @@ class UserDefinedFormAdmin extends LeftAndMain
 
         return Form::create($this, 'ConfirmFolderForm', $fields, $actions, RequiredFields::create('ID'))
             ->setFormAction($this->Link('ConfirmFolderForm'))
-            ->addExtraClass('form--no-dividers')
-            ->setAttribute('data-admin-url', AdminRootController::admin_url());
+            ->addExtraClass('form--no-dividers');
     }
 
     /**
@@ -223,7 +220,6 @@ class UserDefinedFormAdmin extends LeftAndMain
         if (!$id) {
             throw new HTTPResponse_Exception(_t(__CLASS__.'.INVALID_REQUEST', 'This request was invalid.'), 400);
         }
-        /** @var EditableFileField $editableFileField */
         $editableFormField = EditableFormField::get()->byID($id);
         if (!$editableFormField) {
             $editableFormField = Versioned::get_by_stage(EditableFormField::class, Versioned::DRAFT)->byID($id);
@@ -277,7 +273,6 @@ class UserDefinedFormAdmin extends LeftAndMain
     {
         $folderID = $this->getRequest()->requestVar('FolderID');
         if ($folderID) {
-            /** @var Folder $folder */
             $folder = Folder::get()->byID($folderID);
             if (!$folder) {
                 throw new HTTPResponse_Exception(_t(__CLASS__.'.INVALID_REQUEST', 'This request was invalid.'), 400);

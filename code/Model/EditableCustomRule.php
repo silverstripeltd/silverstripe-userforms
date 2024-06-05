@@ -20,8 +20,8 @@ use SilverStripe\Versioned\Versioned;
  * @property string $Display
  * @property string $FieldValue
  * @property int $ParentID
- * @method EditableFormField Parent()
  * @method EditableFormField ConditionField()
+ * @method EditableFormField Parent()
  */
 class EditableCustomRule extends DataObject
 {
@@ -152,7 +152,6 @@ class EditableCustomRule extends DataObject
      */
     public function buildExpression()
     {
-        /** @var EditableFormField $formFieldWatch */
         $formFieldWatch = $this->ConditionField();
         //Encapsulated the action to the object
         $action = $formFieldWatch->getJsEventHandler();

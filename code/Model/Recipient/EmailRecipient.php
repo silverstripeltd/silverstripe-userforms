@@ -62,7 +62,7 @@ use Symbiote\GridFieldExtensions\GridFieldEditableColumns;
  * @property int $SendEmailFromFieldID
  * @property int $SendEmailSubjectFieldID
  * @property int $SendEmailToFieldID
- * @method HasManyList|EmailRecipientCondition[] CustomRules()
+ * @method HasManyList<EmailRecipientCondition> CustomRules()
  * @method DataObject Form()
  * @method EditableFormField SendEmailFromField()
  * @method EditableFormField SendEmailSubjectField()
@@ -152,7 +152,6 @@ class EmailRecipient extends DataObject
     {
         $fields = parent::summaryFields();
         if (isset($fields['EmailAddress'])) {
-            /** @skipUpgrade */
             $fields['EmailAddress'] = _t('SilverStripe\\UserForms\\Model\\UserDefinedForm.EMAILADDRESS', 'Email');
         }
         if (isset($fields['EmailSubject'])) {
@@ -178,7 +177,7 @@ class EmailRecipient extends DataObject
         }
 
         // Revert to checking for a form from the session
-        // LeftAndMain::sessionNamespace is protected. @todo replace this with a non-deprecated equivalent.
+        // LeftAndMain::sessionNamespace is protected.
         $sessionNamespace = $this->config()->get('session_namespace') ?: CMSMain::class;
 
         $formID = Controller::curr()->getRequest()->getSession()->get($sessionNamespace . '.currentPage');
@@ -332,12 +331,12 @@ class EmailRecipient extends DataObject
 
         if ($templates) {
             $fields->insertBefore(
+                'EmailBodyHtml',
                 DropdownField::create(
                     'EmailTemplate',
                     _t('SilverStripe\\UserForms\\Model\\UserDefinedForm.EMAILTEMPLATE', 'Email template'),
                     $templates
-                )->addExtraClass('toggle-html-only'),
-                'EmailBodyHtml'
+                )->addExtraClass('toggle-html-only')
             );
         }
 
@@ -465,7 +464,6 @@ class EmailRecipient extends DataObject
         // Check all rules
         $isAnd = $this->CustomRulesCondition === 'And';
         foreach ($customRules as $customRule) {
-            /** @var EmailRecipientCondition  $customRule */
             $matches = $customRule->matches($data);
             if ($isAnd && !$matches) {
                 return false;
@@ -716,7 +714,7 @@ class EmailRecipient extends DataObject
     }
 
     /**
-     * @return DataList|null
+     * @return DataList<EditableMultipleOptionField>|null
      */
     protected function getMultiOptionFields()
     {
@@ -727,7 +725,7 @@ class EmailRecipient extends DataObject
     }
 
     /**
-     * @return ArrayList|null
+     * @return ArrayList<EditableFormField>|null
      */
     protected function getValidSubjectFields()
     {
@@ -746,7 +744,7 @@ class EmailRecipient extends DataObject
     }
 
     /**
-     * @return DataList|null
+     * @return DataList<EditableEmailField>|null
      */
     protected function getValidEmailFromFields()
     {
@@ -759,7 +757,7 @@ class EmailRecipient extends DataObject
     }
 
     /**
-     * @return ArrayList|DataList|null
+     * @return ArrayList<EditableFormField>|DataList<EditableFormField>|null
      */
     protected function getValidEmailToFields()
     {

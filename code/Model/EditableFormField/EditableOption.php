@@ -2,7 +2,6 @@
 
 namespace SilverStripe\UserForms\Model\EditableFormField;
 
-use SilverStripe\Core\Convert;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\Security\Member;
 use SilverStripe\Versioned\Versioned;
@@ -17,8 +16,8 @@ use SilverStripe\Versioned\Versioned;
  * @property int $ParentID
  * @property int $Sort
  * @property string $Value
- * @method EditableMultipleOptionField Parent()
  * @mixin Versioned
+ * @method EditableMultipleOptionField Parent()
  */
 class EditableOption extends DataObject
 {
@@ -67,15 +66,6 @@ class EditableOption extends DataObject
     public static function set_allow_empty_values($allow)
     {
         self::$allow_empty_values = (bool) $allow;
-    }
-
-    /**
-     * @deprecated 5.0..6.0 Use "$Title" in templates instead
-     * @return string
-     */
-    public function getEscapedTitle()
-    {
-        return Convert::raw2xml($this->Title);
     }
 
     /**

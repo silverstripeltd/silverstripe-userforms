@@ -19,9 +19,9 @@ use SilverStripe\Security\Member;
  * @package userforms
  * @property int $SubmittedByID
  * @property int $ParentID
- * @method Member SubmittedBy()
  * @method DataObject Parent()
- * @method HasManyList|SubmittedFormField[] Values()
+ * @method Member SubmittedBy()
+ * @method HasManyList<SubmittedFormField> Values()
  */
 class SubmittedForm extends DataObject
 {
@@ -40,7 +40,7 @@ class SubmittedForm extends DataObject
 
     private static $summary_fields = [
         'ID',
-        'Created'
+        'Created.Nice' => 'Created'
     ];
 
     private static $table_name = 'SubmittedForm';

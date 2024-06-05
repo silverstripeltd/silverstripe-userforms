@@ -7,14 +7,16 @@ de_DE:
     DISPLAYERRORMESSAGESATTOP: 'Fehlermeldungen über dem Formular anzeigen?'
     ENABLELIVEVALIDATION: 'Aktiviere Live-Validierung'
     NORECIPIENTS: 'Warnung: Sie haben keine Empfänger konfiguriert. Einsendungen gehen möglicherweise verloren.'
+    ONCOMPLETELABEL: 'Nach Vervollständigung anzeigen'
     RECIPIENTS: Empfänger
     SAVESUBMISSIONS: 'Deaktiviere Speichern von Einsendungen auf dem Server'
-    SHOWCLEARFORM: 'Zeige ''Löschen''-Button'
+    SHOWCLEARFORM: "Zeige 'Löschen'-Button"
     SUBMISSIONS: Einsendungen
     SUBMITBUTTON: Absenden
-    TEXTONCLEAR: 'Text auf ''Löschen''-Button'
+    TEXTONCLEAR: "Text auf 'Löschen'-Button"
     TEXTONSUBMIT: 'Text auf Absende-Button'
   SilverStripe\UserForms\Control\UserDefinedFormAdmin:
+    CANCEL: Abbrechen
     FOLDER_OPTIONS_NEW: 'Neuen Ordner erzeugen (empfohlen)'
     FORM_ACTION_CONFIRM: 'Speichern und weiter'
   SilverStripe\UserForms\Extension\UserFormFieldEditorExtension:
@@ -22,8 +24,8 @@ de_DE:
     ADD_FIELD_GROUP: 'Gruppe hinzufügen'
     ADD_PAGE_BREAK: 'Seite hinzufügen'
     FORMFIELDS: Formularfelder
+    has_many_Fields: Felder
   SilverStripe\UserForms\Form\UserFormsGridFieldFilterHeader:
-    FILTER: Filter
     FILTERSUBMISSIONS: 'Einreichungen filtern..'
     FROM: Formular
     RESET: Zurücksetzen
@@ -46,7 +48,6 @@ de_DE:
     FIELDISREQUIRED: '{name} ist ein Pflichtfeld'
     GROUP: Gruppe
     INITIALVISIBILITY: 'Interne Sichtbarkeit'
-    NAME: Name
     'NO': Nein
     PLACEHOLDER: Platzhalter
     PLURALNAME: 'Editierbare Formularfelder'
@@ -59,6 +60,9 @@ de_DE:
     TYPE_EMPTY: 'Wähle Feld-Typ'
     VALIDATION: Validierung
     'YES': Ja
+    db_Placeholder: Platzhalter
+    db_RightTitle: 'Titel rechts'
+    db_Title: Titel
   SilverStripe\UserForms\Model\EditableFormField\EditableCheckbox:
     PLURALNAME: Checkboxen
     SINGULARNAME: 'Checkbox Feld'
@@ -74,7 +78,6 @@ de_DE:
     PLURALNAME: Datumsfelder
     SINGULARNAME: Datumsfeld
   SilverStripe\UserForms\Model\EditableFormField\EditableDropdown:
-    PLURALNAME: Dropdowns
     SINGULARNAME: 'Dropdown Feld'
   SilverStripe\UserForms\Model\EditableFormField\EditableEmailField:
     PLURALNAME: E-Mail-Felder
@@ -84,6 +87,7 @@ de_DE:
     SINGULARNAME: 'Editierbare Feld-Gruppe'
   SilverStripe\UserForms\Model\EditableFormField\EditableFieldGroupEnd:
     FIELD_GROUP_START: 'Gruppe {group}'
+    belongs_to_Group: Gruppe
   SilverStripe\UserForms\Model\EditableFormField\EditableFileField:
     PLURALNAME: Dateiupload-Felder
     SELECTUPLOADFOLDER: 'Ordner für den Upload auswählen'
@@ -100,14 +104,14 @@ de_DE:
     STEP_TITLE: 'Seite {page}'
     TITLE_FIRST: 'Erste Seite'
   SilverStripe\UserForms\Model\EditableFormField\EditableLiteralField:
-    CONTENT: HTML
     HIDEFROMREPORT: 'Nicht in Berichten anzeigen?'
-    HIDELABEL: '''Titel''-Label in Frontend verbergen?'
+    HIDELABEL: "'Titel'-Label in Frontend verbergen?"
     PLURALNAME: HTML-Blöcke
     SINGULARNAME: HTML-Block
   SilverStripe\UserForms\Model\EditableFormField\EditableMemberListField:
     PLURALNAME: 'Member List Felder'
     SINGULARNAME: 'Member List Feld'
+    has_one_Group: Gruppe
   SilverStripe\UserForms\Model\EditableFormField\EditableMultipleOptionField:
     DEFAULT: 'Standardmäßig ausgewählt?'
     OPTIONSTAB: Optionen
@@ -115,6 +119,7 @@ de_DE:
     SINGULARNAME: 'Editierbares Multi-Option Feld'
     TITLE: Titel
     VALUE: Wert
+    has_many_Options: Optionen
   SilverStripe\UserForms\Model\EditableFormField\EditableNumericField:
     ORDER_WARNING: 'Minimale Länge sollte unter maximaler Länge liegen.'
     PLURALNAME: Zahlenfelder
@@ -124,6 +129,8 @@ de_DE:
   SilverStripe\UserForms\Model\EditableFormField\EditableOption:
     PLURALNAME: 'Editierbare Optionen'
     SINGULARNAME: 'Editierbare Option'
+    db_Title: Titel
+    db_Value: Wert
   SilverStripe\UserForms\Model\EditableFormField\EditableRadioField:
     PLURALNAME: Radio-Groups
     SINGULARNAME: Radio-Button
@@ -138,6 +145,7 @@ de_DE:
     RANGE_TO: an
     SINGULARNAME: Textfeld
     TEXTLENGTH: Textlänge
+    db_Autocomplete: Auto-Vervollständigung
   SilverStripe\UserForms\Model\Recipient\EmailRecipient:
     CUSTOMRULESTAB: 'Eigene Regeln'
     EMAILCONTENTTAB: E-Mail-Inhalt
@@ -146,6 +154,9 @@ de_DE:
     EMAILTOREQUIRED: 'Empfänger-Adresse ist erforderlich'
     PLURALNAME: E-Mail-Empfänger
     SINGULARNAME: 'Anpassbares Formular E-Mail Empfänger'
+    db_EmailSubject: Betreff
+    db_EmailTemplate: E-Mail-Template
+    has_one_Form: Formular
   SilverStripe\UserForms\Model\Recipient\EmailRecipientCondition:
     PLURALNAME: 'Bedingungen für E-Mail-Empfänger'
     SINGULARNAME: 'Bedingung für E-Mail-Empfänger'
@@ -160,25 +171,37 @@ de_DE:
   SilverStripe\UserForms\Model\Submission\SubmittedFormField:
     PLURALNAME: 'Abgesendete Formularfelder'
     SINGULARNAME: 'Abgesendetes Formularfeld'
+    db_Title: Titel
+    db_Value: Wert
   SilverStripe\UserForms\Model\UserDefinedForm:
+    ADDEMAILRECIPIENT: 'E-Mail-Empfänger hinzufügen'
     CLEARBUTTON: Löschen
+    CONFIGURATION: Konfiguration
     DESCRIPTION: 'Fügt ein anpassbares Formular hinzu.'
+    DISABLECSRFSECURITYTOKEN: 'Deaktiviere CSRF-Token'
+    DISPLAYERRORMESSAGESATTOP: 'Fehlermeldungen über dem Formular anzeigen?'
     EMAILADDRESS: E-Mail
     EMAILBODY: Inhalt
+    EMAILBODYHTML: Inhalt
     EMAILFROM: Von
     EMAILSUBJECT: Betreff
     EMAILTEMPLATE: E-Mail-Template
+    ENABLELIVEVALIDATION: 'Aktiviere Live-Validierung'
     EmailFromContent: 'Mit der Absender-Adresse können Sie bestimmen, von welcher Adresse aus die E-Mail versendet wird. Meistens ist es eine Adresse der selben Domain wie die Webseite. Die Webseite meineseite.com benötigt z.B. irgendwas@meineseite.com. Sie können zusätzlich jede Adresse als "Antworten an" eintragen.'
     FROMADDRESS: 'E-Mail versendet von'
     HIDEFORMDATA: 'Formulardaten in E-Mail nicht anzeigen'
+    NORECIPIENTS: 'Warnung: Sie haben keine Empfänger konfiguriert. Einsendungen gehen möglicherweise verloren.'
+    ONCOMPLETELABEL: 'Nach Vervollständigung anzeigen'
     ORSELECTAFIELDTOUSEASFROM: '.. oder ein Feld für Antwort-Adresse wählen'
     ORSELECTAFIELDTOUSEASTO: '.. oder wähle ein Feld als Empfänger-Adresse'
-    PLURALNAME: 'Benutzerdefinierte Formulare'
+    PLURALNAME: 'Anpassbares Formular'
     PREVIEW_EMAIL: E-Mail-Vorschau
     PREVIEW_EMAIL_DESCRIPTION: 'Hinweis: Ungespeicherte Änderungen werde nicht in der Vorschau angezeigt.'
     PREVIEW_EMAIL_UNAVAILABLE: 'Sie können die Vorschau dieser E-Mail ansehen, wenn der Empfänger gespeichert wurde.'
+    RECIPIENTS: Empfänger
     REPLYADDRESS: 'E-Mail-Adresse für "Antworten an"'
     REPLYADDRESS_DESCRIPTION: 'E-Mail-Adresse, an welche der Empfänger antworten kann.'
+    SAVESUBMISSIONS: 'Deaktiviere Speichern von Einsendungen auf dem Server'
     SELECTAFIELDTOSETSUBJECT: '.. oder ein Feld als Betreff wählen'
     SENDEMAILTO: 'E-Mail senden an'
     SENDEMAILTO_DESCRIPTION: 'Sie können mehrere E-Mail-Adressen kommasepariert eingeben'
@@ -186,8 +209,15 @@ de_DE:
     SENDIFAND: 'Alle Bedingungen sind wahr'
     SENDIFOR: 'Beliebige Bedingung ist wahr'
     SENDPLAIN: 'E-Mail als Text versenden (HTML wird entfernt)'
+    SHOWCLEARFORM: "Zeige 'Löschen'-Button"
     SINGULARNAME: 'Anpassbares Formular'
+    SUBMISSIONS: Einsendungen
     SUBMITBUTTON: Senden
+    TEXTONCLEAR: "Text auf 'Löschen'-Button"
+    TEXTONSUBMIT: 'Text auf Absende-Button'
     TYPEREPLY: 'Antwort-Adresse eingeben'
     TYPESUBJECT: 'Betreff eingeben'
     TYPETO: 'Empfänger-Adresse eingeben'
+    db_EnableLiveValidation: 'Aktiviere Live-Validierung'
+    has_many_Fields: Felder
+    has_many_Submissions: Einsendungen

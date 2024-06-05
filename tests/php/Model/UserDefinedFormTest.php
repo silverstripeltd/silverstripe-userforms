@@ -40,7 +40,7 @@ class UserDefinedFormTest extends FunctionalTest
     protected function setUp(): void
     {
         parent::setUp();
-        Email::config()->update('admin_email', 'no-reply@example.com');
+        Email::config()->set('admin_email', 'no-reply@example.com');
     }
 
     public function testRollbackToVersion()
@@ -49,8 +49,8 @@ class UserDefinedFormTest extends FunctionalTest
             'UserDefinedForm::rollback() has not been implemented completely'
         );
 
-        // @todo
         $this->logInWithPermission('ADMIN');
+        /** @var UserDefinedForm|Versioned $form  */
         $form = $this->objFromFixture(UserDefinedForm::class, 'basic-form-page');
 
         $form->SubmitButtonText = 'Button Text';
@@ -66,7 +66,7 @@ class UserDefinedFormTest extends FunctionalTest
         $updated = Versioned::get_one_by_stage(UserDefinedForm::class, 'Stage', "\"UserDefinedForm\".\"ID\" = $form->ID");
         $this->assertEquals($updated->SubmitButtonText, 'Updated Button Text');
 
-        $form->doRollbackTo($origVersion);
+        $form->rollbackRecursive($origVersion);
 
         $orignal = Versioned::get_one_by_stage(UserDefinedForm::class, 'Stage', "\"UserDefinedForm\".\"ID\" = $form->ID");
         $this->assertEquals($orignal->SubmitButtonText, 'Button Text');
@@ -521,7 +521,7 @@ class UserDefinedFormTest extends FunctionalTest
     {
         // Test that the $UserDefinedForm is stripped out
         $page = $this->objFromFixture(UserDefinedForm::class, 'basic-form-page');
-        $page->publish('Stage', 'Live');
+        $page->copyVersionToStage(Versioned::DRAFT, Versioned::LIVE);
 
         $result = $this->get($page->Link());
         $body = Convert::nl2os($result->getBody(), ''); // strip out newlines

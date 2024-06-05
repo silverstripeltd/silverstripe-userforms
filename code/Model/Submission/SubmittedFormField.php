@@ -13,6 +13,7 @@ use SilverStripe\UserForms\Model\EditableFormField;
  * @package userforms
  * @property string $Name
  * @property string $Value
+ * @method SubmittedForm Parent()
  */
 class SubmittedFormField extends DataObject
 {
@@ -33,6 +34,10 @@ class SubmittedFormField extends DataObject
     ];
 
     private static $table_name = 'SubmittedFormField';
+
+    private static $indexes = [
+        'Name' => 'Name',
+    ];
 
     /**
      * @param Member $member

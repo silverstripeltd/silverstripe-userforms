@@ -31,7 +31,7 @@ use Symbiote\GridFieldExtensions\GridFieldTitleHeader;
  * @see EditableDropdownField
  *
  * @package userforms
- * @method HasManyList|EditableOption[] Options()
+ * @method HasManyList<EditableOption> Options()
  */
 class EditableMultipleOptionField extends EditableFormField
 {
@@ -103,7 +103,7 @@ class EditableMultipleOptionField extends EditableFormField
                 $optionsConfig
             );
 
-            $fields->insertAfter(Tab::create('Options', _t(__CLASS__.'.OPTIONSTAB', 'Options')), 'Main');
+            $fields->insertAfter('Main', Tab::create('Options', _t(__CLASS__.'.OPTIONSTAB', 'Options')));
             $fields->addFieldToTab('Root.Options', $optionsGrid);
         });
 
@@ -115,20 +115,13 @@ class EditableMultipleOptionField extends EditableFormField
     /**
      * Duplicate a pages content. We need to make sure all the fields attached
      * to that page go with it
-     *
      * {@inheritDoc}
      */
-    public function duplicate($doWrite = true, $manyMany = 'many_many')
+    public function duplicate(bool $doWrite = true, array|null $relations = null): static
     {
-        // Versioned 1.0 has a bug where [] will result in _all_ relations being duplicated
-        if ($manyMany === 'many_many' && !$this->manyMany()) {
-            $manyMany = null;
-        }
-
-        $clonedNode = parent::duplicate(true, $manyMany);
+        $clonedNode = parent::duplicate(true);
 
         foreach ($this->Options() as $field) {
-            /** @var EditableOption $newField */
             $newField = $field->duplicate(false);
             $newField->ParentID = $clonedNode->ID;
             $newField->Version = 0;
