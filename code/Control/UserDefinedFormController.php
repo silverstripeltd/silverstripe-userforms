@@ -507,6 +507,11 @@ JS
                             } else {
                                 $body .= $field->Title . ': ' . $field->Value . " \n";
                             }
+
+                            // Let an extension change how this field reads in a plain text email.
+                            // A project that stores the value somewhere other than Value, such as an
+                            // encrypted field, needs this to write the readable value instead.
+                            $this->extend('updateEmailBodyValues', $body, $field);
                         }
                     }
 
